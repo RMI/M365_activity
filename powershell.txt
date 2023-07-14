@@ -3,7 +3,7 @@ Connect-PowerBIServiceAccount
 
 #Input values before running the script:
 $NbrDaysDaysToExtract = 7
-$ExportFileLocation = 'C:\Users\ghoffman\OneDrive - RMI\01. Projects\Python_General\pbi_activity_data'
+$ExportFileLocation = 'C:\Users\ghoffman\OneDrive - RMI\01. Projects\Python_General\M365_activity\pbi_activity_data'
 $ExportFileName = 'PBIActivityEvents'
 #--------------------------------------------
 
