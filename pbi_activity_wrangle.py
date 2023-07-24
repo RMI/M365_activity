@@ -1,6 +1,9 @@
 ## FORMAT POWER BI ACTIVITY LOG DATA
 ## Purpose: This py script reformats JSON files extracted via PowerShell for RMI Power BI utilization, then imports the data to the rmi_pbi_activity MySQL schema
-## Dependencies: Must execute powershell.txt in PowerShell to generate JSON files
+## Dependencies: 
+##      - Must have Power BI Admin user role assigned in MS365
+##      - Must have access to KM Azure for MySQL environment
+##      - Must be present during file execution to confirm admin credential utilization
 
 import pandas as pd
 from pathlib import Path
@@ -10,12 +13,27 @@ import os
 import mysql.connector
 from datetime import date, timezone, datetime
 import shutil
+import subprocess
+import sys
 
-load_dotenv('cred.env')
-rmi_db = os.getenv('DBASE_PWD')
-rmi_db_ip = os.getenv('DBASE_IP')
+# Execute Powershell script to extract Power BI info from MS Graph. Requires Power BI admin account. User will be prompted to sign-in
+p = subprocess.Popen('powershell.exe -ExecutionPolicy RemoteSigned -file "M365_activity\\ps_pbi_activity_get.ps1"', stdout=sys.stdout)
 
-mydir = Path("M365_activity/pbi_activity_data/")
+load_dotenv('cred.env') # Location of environments file
+rmi_db = os.getenv('DBASE_PWD') # Password for RMI Azure for MySQL environment
+rmi_db_ip = os.getenv('DBASE_IP') # Server IP for RMI Azure for MySQL environment
+
+mydir = Path("M365_activity/pbi_activity_data/") # Folder where Powershell script outputs JSON files
+#sourcepath='M365_activity/pbi_activity_data/' # 
+destinationpath = 'M365_activity/pbi_activity_data/archive/' # Archive folder for JSONs after importing and appending
+file_raw_backup = 'M365_activity/pbi_activity_data/imports/raw_'+ str(date.today()) + '.xlsx' # Raw backup file path
+file_import = 'M365_activity/pbi_activity_data/imports/import_'+ str(date.today()) + '.xlsx' # Import-formatted backup file path
+
+###################################################################
+######### BELOW THIS LINE DOES NOT REQUIRE MODIFICATION ###########
+###################################################################
+
+# Create blank dfs list and df_base for appending data from JSONs
 dfs = []
 
 df_base = pd.DataFrame(columns= ['Id', 'CreationTime', 'Operation', 'UserType', 'UserId','Activity', 'ItemName', 'WorkSpaceName', 'DatasetName',
@@ -34,16 +52,13 @@ df = pd.DataFrame(df)
 df1 = pd.concat([df_base, df], ignore_index=True)
 
 # Move new JSONs to archive
-sourcepath='M365_activity/pbi_activity_data/'
-sourcefiles = os.listdir(sourcepath)
-destinationpath = 'M365_activity/pbi_activity_data/archive/'
+sourcefiles = os.listdir(mydir)
 for file in sourcefiles:
     if file.endswith('.json'):
-        shutil.move(os.path.join(sourcepath,file), os.path.join(destinationpath,file))
+        shutil.move(os.path.join(mydir,file), os.path.join(destinationpath,file))
 
 # Export Excel backup
-name = 'M365_activity/pbi_activity_data/imports/raw_'+ str(date.today()) + '.xlsx'
-df1.to_excel(name)
+df1.to_excel(file_raw_backup)
 
 # Format data for database import
 df_import = df1[['Id', 'CreationTime', 'Operation', 'UserType', 'UserId','Activity', 'ItemName', 'WorkSpaceName', 'DatasetName',
@@ -73,10 +88,10 @@ df_import = df_import.drop(df_import[df_import.Id.isin(df1['Id'])].index.tolist(
 df_import.reset_index(inplace=True)
 df_import = df_import.drop("index", axis= 1)
 
-name = 'M365_activity/pbi_activity_data/imports/import_'+ str(date.today()) + '.xlsx'
 df_import['CreationTime'] = df_import['CreationTime'].dt.tz_localize(None)
 
-df_import.to_excel(name)
+# Save local copy of import-formatted data
+df_import.to_excel(file_import)
 # Import new records
 df_import.to_sql(con=database_connection, name='activity_log', if_exists='append', index=False)
 
