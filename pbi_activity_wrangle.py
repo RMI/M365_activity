@@ -4,6 +4,8 @@
 ##      - Must have Power BI Admin user role assigned in MS365
 ##      - Must have access to KM Azure for MySQL environment
 ##      - Must be present during file execution to confirm admin credential utilization
+##      - Must have KM Azure server IP added to local host file (Requires admin credentials)
+##      - Must have SSL CA.crt.pem file
 
 import pandas as pd
 from pathlib import Path
@@ -16,15 +18,17 @@ import shutil
 import subprocess
 import sys
 
+
 # Execute Powershell script to extract Power BI info from MS Graph. Requires Power BI admin account. User will be prompted to sign-in
 p = subprocess.Popen('powershell.exe -ExecutionPolicy RemoteSigned -file "M365_activity\\ps_pbi_activity_get.ps1"', stdout=sys.stdout)
 
 load_dotenv('cred.env') # Location of environments file
 rmi_db = os.getenv('DBASE_PWD') # Password for RMI Azure for MySQL environment
 rmi_db_ip = os.getenv('DBASE_IP') # Server IP for RMI Azure for MySQL environment
+ssl_file = 'C:/Users/ghoffman/OneDrive - RMI/01. Projects/DigiCertGlobalRootCA.crt.pem' # Location of digital SSL cert file
 
-mydir = Path("M365_activity/pbi_activity_data/") # Folder where Powershell script outputs JSON files
-#sourcepath='M365_activity/pbi_activity_data/' # 
+mydir = Path('M365_activity/pbi_activity_data/') # Folder where Powershell script outputs JSON files
+#sourcepath='M365_activity/pbi_activity_data/' 
 destinationpath = 'M365_activity/pbi_activity_data/archive/' # Archive folder for JSONs after importing and appending
 file_raw_backup = 'M365_activity/pbi_activity_data/imports/raw_'+ str(date.today()) + '.xlsx' # Raw backup file path
 file_import = 'M365_activity/pbi_activity_data/imports/import_'+ str(date.today()) + '.xlsx' # Import-formatted backup file path
@@ -42,7 +46,7 @@ df_base = pd.DataFrame(columns= ['Id', 'CreationTime', 'Operation', 'UserType', 
 
 # Loop through data folder, appending any JSON files to df
 for file in mydir.glob('*.json'):
-    data = pd.read_json(file,  encoding='utf-16')
+    data = pd.read_json(file, encoding='utf-16')
     dfs.append(data)
 
 df = pd.concat(dfs, ignore_index=True)
@@ -74,9 +78,10 @@ database_username = 'rmiadmin'
 database_password = rmi_db
 database_ip       = rmi_db_ip
 database_name     = 'rmi_pbi_activity'
-database_connection = sqlalchemy.create_engine('mysql+mysqlconnector://{0}:{1}@{2}/{3}'.
-                                               format(database_username, database_password, 
-                                                      database_ip, database_name))
+connect_args={'ssl_ca':ssl_file}
+connect_string = 'mysql+mysqlconnector://{0}:{1}@{2}/{3}'.format(database_username, database_password, 
+                                                      database_ip, database_name)
+database_connection = sqlalchemy.create_engine(connect_string,connect_args=connect_args) 
 
 with database_connection.connect() as conn:
     result = conn.execute("select Id from activity_log")
