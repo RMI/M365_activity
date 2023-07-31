@@ -152,3 +152,4 @@ cython_debug/
 #.idea/
 *.json
 *.xlsx
+mysql_debug.py
