@@ -17,6 +17,7 @@ from datetime import date, timezone, datetime
 import shutil
 import subprocess
 import sys
+# from sqlalchemy import text   # May need this if using newer version of sqlalchemy
 
 
 # Execute Powershell script to extract Power BI info from MS Graph. Requires Power BI admin account. User will be prompted to sign-in
@@ -70,7 +71,7 @@ df_import = df1[['Id', 'CreationTime', 'Operation', 'UserType', 'UserId','Activi
                    'DashboardName', 'SharingAction','SharingScope' ]]
 
 df_import = df_import[df_import['Id'].notnull()]
-df_import['CreationTime'] = pd.to_datetime(df_import['CreationTime'], format="%Y-%m-%d %H:%M:%S")
+df_import['CreationTime'] = pd.to_datetime(df_import['CreationTime'], format="%Y-%m-%dT%H:%M:%SZ")
 df_import.drop_duplicates(subset='Id', inplace=True)
 
 # Extract existing record IDs and compare, removing duplicates
@@ -84,6 +85,7 @@ connect_string = 'mysql+mysqlconnector://{0}:{1}@{2}/{3}'.format(database_userna
 database_connection = sqlalchemy.create_engine(connect_string,connect_args=connect_args) 
 
 with database_connection.connect() as conn:
+    #result = conn.execute(text("select Id from activity_log")) #May need this if using a more recent version of sqlalchemy
     result = conn.execute("select Id from activity_log")
     df1 = pd.DataFrame(result.fetchall())
     df1.columns = result.keys()
