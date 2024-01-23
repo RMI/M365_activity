@@ -66,12 +66,14 @@ df1.to_excel(file_raw_backup)
 df_import = df1.copy()
 
 df_import['UserId'] = df_import['UserId'].str.lower()
+df_import.drop(columns=['UserProgram'], inplace=True)
 
 # add cost center to df_import
 df_import = df_import.merge(df_staff, how='left', left_on='UserId', right_on='email')
 
 # Drop email column
 df_import.drop(columns=['email'], inplace=True)
+#df_import.rename(columns={'UserProgram_y':'UserProgram'}, inplace=True)
 
 # Save local copy of import-formatted data
 df_import.to_excel(file_import)
