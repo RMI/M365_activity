@@ -59,6 +59,7 @@ with database_connection.connect() as conn:
     database_connection.dispose()
 
 df_staff.rename(columns={'cost_center':'UserProgram'}, inplace=True)
+df_staff['email'] = df_staff['email'].str.lower()
 
 
 # Create blank dfs list and df_base for appending data from JSONs
@@ -119,6 +120,7 @@ df_import.reset_index(inplace=True)
 df_import = df_import.drop("index", axis= 1)
 
 df_import['CreationTime'] = df_import['CreationTime'].dt.tz_localize(None)
+df_import['UserId'] = df_import['UserId'].str.lower()
 
 # add cost center to df_import
 df_import = df_import.merge(df_staff, how='left', left_on='UserId', right_on='email')
