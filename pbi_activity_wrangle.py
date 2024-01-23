@@ -17,7 +17,7 @@ from datetime import date, timezone, datetime
 import shutil
 import subprocess
 import sys
-# from sqlalchemy import text   # May need this if using newer version of sqlalchemy
+from sqlalchemy import text   # May need this if using newer version of sqlalchemy
 
 
 # Execute Powershell script to extract Power BI info from MS Graph. Requires Power BI admin account. User will be prompted to sign-in
@@ -37,6 +37,29 @@ file_import = 'M365_activity/pbi_activity_data/imports/import_'+ str(date.today(
 ###################################################################
 ######### BELOW THIS LINE DOES NOT REQUIRE MODIFICATION ###########
 ###################################################################
+
+# Get list of current RMI staff emails and cost centers
+
+database_username = 'rmiadmin'
+database_password = rmi_db
+database_ip       = rmi_db_ip
+database_name     = 'rmi_skills'
+database_connection = sqlalchemy.create_engine('mysql+mysqlconnector://{0}:{1}@{2}/{3}'.
+                                               format(database_username, database_password, 
+                                                      database_ip, database_name))
+
+
+
+query_string = "select email, cost_center from worker_details"
+
+with database_connection.connect() as conn:
+    result = conn.execute(text(query_string))
+    df_staff = pd.DataFrame(result.fetchall())
+    df_staff.columns = result.keys()
+    database_connection.dispose()
+
+df_staff.rename(columns={'cost_center':'UserProgram'}, inplace=True)
+
 
 # Create blank dfs list and df_base for appending data from JSONs
 dfs = []
@@ -85,8 +108,8 @@ connect_string = 'mysql+mysqlconnector://{0}:{1}@{2}/{3}'.format(database_userna
 database_connection = sqlalchemy.create_engine(connect_string,connect_args=connect_args) 
 
 with database_connection.connect() as conn:
-    #result = conn.execute(text("select Id from activity_log")) #May need this if using a more recent version of sqlalchemy
-    result = conn.execute("select Id from activity_log")
+    result = conn.execute(text("select Id from activity_log")) #May need this if using a more recent version of sqlalchemy
+   # result = conn.execute("select Id from activity_log")
     df1 = pd.DataFrame(result.fetchall())
     df1.columns = result.keys()
 
@@ -96,6 +119,12 @@ df_import.reset_index(inplace=True)
 df_import = df_import.drop("index", axis= 1)
 
 df_import['CreationTime'] = df_import['CreationTime'].dt.tz_localize(None)
+
+# add cost center to df_import
+df_import = df_import.merge(df_staff, how='left', left_on='UserId', right_on='email')
+
+# Drop email column
+df_import.drop(columns=['email'], inplace=True)
 
 # Save local copy of import-formatted data
 df_import.to_excel(file_import)
