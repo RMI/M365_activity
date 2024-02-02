@@ -46,14 +46,23 @@ df_staff['email'] = df_staff['email'].str.lower()
 
 
 # Extract existing records from activity_log table
+# database_username = 'rmiadmin'
+# database_password = rmi_db
+# database_ip       = rmi_db_ip
+# database_name     = 'rmi_pbi_activity'
+# connect_args={'ssl_ca':ssl_file}
+# connect_string = 'mysql+mysqlconnector://{0}:{1}@{2}/{3}'.format(database_username, database_password, 
+#                                                       database_ip, database_name)
+# database_connection = sqlalchemy.create_engine(connect_string,connect_args=connect_args) 
+
+
 database_username = 'rmiadmin'
 database_password = rmi_db
 database_ip       = rmi_db_ip
 database_name     = 'rmi_pbi_activity'
-connect_args={'ssl_ca':ssl_file}
-connect_string = 'mysql+mysqlconnector://{0}:{1}@{2}/{3}'.format(database_username, database_password, 
-                                                      database_ip, database_name)
-database_connection = sqlalchemy.create_engine(connect_string,connect_args=connect_args) 
+database_connection = sqlalchemy.create_engine('mysql+mysqlconnector://{0}:{1}@{2}/{3}'.
+                                               format(database_username, database_password, 
+                                                      database_ip, database_name))
 
 with database_connection.connect() as conn:
     result = conn.execute(text("select * from activity_log"))
